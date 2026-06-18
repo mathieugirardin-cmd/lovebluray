@@ -201,3 +201,32 @@ npm run build
 ```
 
 Le build Vite utilise `base: './'` pour rester compatible avec GitHub Pages. Après déploiement, ajoute le domaine GitHub Pages dans Authentication > Settings > Authorized domains.
+
+## Accès depuis l'extérieur
+
+Pour utiliser Lovebluray hors de la maison, déploie l'application sur GitHub Pages.
+
+Étapes:
+
+1. Crée un repository GitHub pour le projet.
+2. Pousse ce dossier sur GitHub.
+3. Dans GitHub, va dans `Settings > Secrets and variables > Actions`.
+4. Ajoute ces secrets avec les valeurs Firebase:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_FIREBASE_MEASUREMENT_ID`
+5. Va dans `Settings > Pages`.
+6. Choisis `GitHub Actions` comme source de déploiement.
+7. Pousse sur `main` ou `master`: le workflow `.github/workflows/deploy-pages.yml` publie automatiquement `dist`.
+8. Ajoute le domaine GitHub Pages dans Firebase Authentication > Settings > Authorized domains.
+
+L'adresse publique ressemblera à:
+
+```text
+https://ton-compte.github.io/nom-du-repo/
+```
+
+Cette URL HTTPS sera accessible depuis ton mobile, même hors de la maison.
