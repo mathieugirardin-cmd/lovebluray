@@ -1,0 +1,27 @@
+{
+  "name": "Lovebluray",
+  "short_name": "Lovebluray",
+  "description": "Collection partagee de Blu-ray, geree en PWA.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#08111d",
+  "theme_color": "#0b2a4a",
+  "id": "./",
+  "icons": [
+    {
+      "src": "./brand/blu-ray-logo.png",
+      "sizes": "1024x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/maskable-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

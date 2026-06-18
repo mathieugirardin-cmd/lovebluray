@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lovebluray">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="40" x2="440" y2="468" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#56B8FF"/>
+      <stop offset="0.52" stop-color="#2E6BFF"/>
+      <stop offset="1" stop-color="#8A4DFF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(160 120) rotate(39) scale(190 200)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="0.45" stop-color="#B3E6FF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#B3E6FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="120" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="464" rx="120" fill="white" fill-opacity="0.06"/>
+  <circle cx="176" cy="144" r="108" fill="url(#glow)"/>
+  <circle cx="332" cy="358" r="136" fill="#06111D" fill-opacity="0.18"/>
+  <circle cx="256" cy="256" r="126" stroke="white" stroke-opacity="0.18" stroke-width="18"/>
+  <circle cx="256" cy="256" r="50" fill="#08111D" fill-opacity="0.92"/>
+  <circle cx="256" cy="256" r="16" fill="#EAF6FF"/>
+  <path d="M181 179H331C349.778 179 365 194.222 365 213V299C365 317.778 349.778 333 331 333H181C162.222 333 147 317.778 147 299V213C147 194.222 162.222 179 181 179Z" stroke="white" stroke-opacity="0.8" stroke-width="16" fill="none"/>
+  <path d="M188 217H324" stroke="white" stroke-opacity="0.55" stroke-width="16" stroke-linecap="round"/>
+  <path d="M188 255H324" stroke="white" stroke-opacity="0.35" stroke-width="16" stroke-linecap="round"/>
+  <path d="M188 293H284" stroke="white" stroke-opacity="0.65" stroke-width="16" stroke-linecap="round"/>
+</svg>

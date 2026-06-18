@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lovebluray maskable">
+  <defs>
+    <linearGradient id="bg2" x1="80" y1="30" x2="430" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#48B2FF"/>
+      <stop offset="0.5" stop-color="#214FFF"/>
+      <stop offset="1" stop-color="#9B49FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="104" fill="url(#bg2)"/>
+  <circle cx="256" cy="256" r="112" fill="#07111C" fill-opacity="0.22"/>
+  <circle cx="256" cy="256" r="80" stroke="white" stroke-opacity="0.84" stroke-width="18"/>
+  <circle cx="256" cy="256" r="18" fill="white"/>
+  <rect x="154" y="170" width="204" height="160" rx="28" stroke="white" stroke-opacity="0.8" stroke-width="16" fill="none"/>
+  <path d="M188 218H324" stroke="white" stroke-opacity="0.72" stroke-width="16" stroke-linecap="round"/>
+  <path d="M188 258H324" stroke="white" stroke-opacity="0.46" stroke-width="16" stroke-linecap="round"/>
+  <path d="M188 298H290" stroke="white" stroke-opacity="0.72" stroke-width="16" stroke-linecap="round"/>
+</svg>
