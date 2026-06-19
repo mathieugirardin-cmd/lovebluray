@@ -126,6 +126,29 @@ async function searchTmdbMovie(title) {
   };
 }
 
+export async function searchTitleMetadata(title) {
+  const cleanTitle = cleanProductTitle(title);
+  if (!cleanTitle) {
+    return null;
+  }
+
+  if (!import.meta.env.VITE_TMDB_API_KEY) {
+    throw new Error('Clé TMDB non configurée. Ajoute VITE_TMDB_API_KEY dans .env et GitHub Secrets.');
+  }
+
+  const tmdbData = await searchTmdbMovie(cleanTitle);
+  if (!tmdbData) {
+    return null;
+  }
+
+  return {
+    ...tmdbData,
+    barcode: '',
+    autoFilledFromBarcode: false,
+    metadataSource: 'TMDB',
+  };
+}
+
 export async function lookupBarcodeMetadata(barcode) {
   const cleanBarcode = String(barcode || '').replace(/\D/g, '');
   if (!cleanBarcode) {

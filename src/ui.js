@@ -183,6 +183,7 @@ function renderMoviePage(state) {
             <button class="icon-toggle ${state.viewMode === 'grid' ? 'is-active' : ''}" type="button" data-action="set-view-mode" data-view-mode="grid" title="Affichage grille">
               ${svgIcon('grid')}
             </button>
+            <button class="ghost-button scan-library-button" type="button" data-action="open-library-scanner">${svgIcon('scan')} Scanner bibliothèque</button>
             <button class="primary-button" type="button" data-action="open-editor">${svgIcon('plus')} Ajouter</button>
           </div>
         </div>
@@ -353,7 +354,7 @@ function renderMetadataSuggestion(suggestion, loading) {
         <div class="loader"><span></span><span></span><span></span></div>
         <div>
           <strong>Recherche en cours</strong>
-          <p>On tente de trouver la fiche du Blu-ray à partir du code-barres.</p>
+          <p>On tente de trouver la fiche du Blu-ray avec TMDB ou le code-barres.</p>
         </div>
       </div>
     `;
@@ -399,7 +400,14 @@ export function renderEditorModal({ bluray, mode, busy, metadataSuggestion, meta
 
         <form class="editor-form" data-editor-form>
           <div class="editor-grid">
-            <label class="field field--wide"><span>Titre *</span><input name="title" required value="${escapeHtml(bluray.title || '')}" /></label>
+            <div class="title-lookup-panel field--wide">
+              <label class="field">
+                <span>Titre *</span>
+                <input name="title" required autocomplete="off" value="${escapeHtml(bluray.title || '')}" />
+              </label>
+              <button class="ghost-button" type="button" data-action="lookup-title" ${metadataLoading ? 'disabled' : ''}>${svgIcon('search')} Rechercher sur TMDB</button>
+              <p class="helper-message">Tape le nom du Blu-ray, puis lance la recherche pour proposer titre, année, genre, réalisateur, résumé et jaquette.</p>
+            </div>
             <label class="field"><span>Saga</span><input name="saga" value="${escapeHtml(bluray.saga || '')}" /></label>
             <label class="field">
               <span>Genre *</span>
@@ -517,8 +525,8 @@ export function renderScannerOverlay(scanner) {
       <section class="scanner-panel glass" role="dialog" aria-modal="true" aria-label="Scanner un code-barres">
         <header class="scanner-panel__header">
           <div>
-            <p class="eyebrow">Scanner un Blu-ray</p>
-            <h3>Code-barres</h3>
+            <p class="eyebrow">${scanner.context === 'library' ? 'Vérifier la bibliothèque' : 'Scanner un Blu-ray'}</p>
+            <h3>${scanner.context === 'library' ? 'Scan rapide' : 'Code-barres'}</h3>
           </div>
           <button class="icon-button" type="button" data-action="close-scanner" title="Fermer le scanner">${svgIcon('close')}</button>
         </header>

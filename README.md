@@ -165,6 +165,8 @@ Fonctionnement:
 - remplissage automatique du champ `barcode`;
 - recherche gratuite via UPCitemdb;
 - recherche TMDB optionnelle si `VITE_TMDB_API_KEY` est renseignée;
+- recherche TMDB directe depuis le champ `title` avec le bouton `Rechercher sur TMDB`;
+- scan rapide `Scanner bibliothèque` depuis la Collection pour vérifier si le code-barres existe déjà;
 - proposition des informations trouvées sans sauvegarde automatique;
 - bouton `Utiliser ces infos` pour préremplir le formulaire;
 - correction manuelle possible avant enregistrement.
@@ -242,6 +244,8 @@ Tu peux ensuite ajouter Quentin avec `role: "member"` ou `role: "owner"`.
 - `À acheter`, `En cours d'achat` et `Non visualisé` affichent les bons films.
 - Le bouton `Scanner le code-barres` ouvre la caméra sur mobile.
 - Un code-barres EAN/UPC remplit automatiquement le champ `barcode`.
+- Le bouton `Scanner bibliothèque` retrouve un Blu-ray déjà enregistré avec le même code-barres.
+- Le bouton `Rechercher sur TMDB` propose une fiche à partir du titre saisi.
 - Si une fiche est trouvée, elle est proposée sans sauvegarde automatique.
 - Le bouton `Utiliser ces infos` préremplit le formulaire.
 - Si aucune fiche n'est trouvée, le code-barres reste rempli et la saisie manuelle reste possible.

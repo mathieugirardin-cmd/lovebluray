@@ -3,7 +3,7 @@ import { auth, db, firebaseStatus } from './firebase';
 import { initAuth, loginWithEmail, loginWithGoogle, logoutUser, registerWithEmail } from './auth';
 import { removeBlurayDocument, saveBlurayDocument, watchBlurays } from './blurays';
 import { deleteCoverDocument, getCoverDocument, saveCoverDocument } from './covers';
-import { lookupBarcodeMetadata } from './metadata';
+import { lookupBarcodeMetadata, searchTitleMetadata } from './metadata';
 import { startBarcodeScanner } from './scanner';
 import { computeStats } from './stats';
 import {
@@ -52,6 +52,7 @@ const state = {
   metadataMessage: '',
   scanner: {
     open: false,
+    context: 'editor',
     status: 'idle',
     message: '',
     error: '',
@@ -156,6 +157,12 @@ function setRouteFromLocation() {
 }
 
 function syncActiveBluray() {
+  if (state.route.type === 'editor' && state.route.id === 'new') {
+    state.activeBluray = null;
+    state.editorBluray = state.editorBluray || emptyBlurayForm();
+    return;
+  }
+
   if (state.route.type === 'detail' || state.route.type === 'editor') {
     const item = state.blurays.find((bluray) => bluray.id === state.route.id);
     state.activeBluray = item ? withCover(item) : null;
@@ -537,6 +544,19 @@ function resetFilters() {
   scheduleRender();
 }
 
+function normalizeBarcode(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function findBlurayByBarcode(barcode) {
+  const cleanBarcode = normalizeBarcode(barcode);
+  if (!cleanBarcode) {
+    return null;
+  }
+
+  return state.blurays.find((bluray) => normalizeBarcode(bluray.barcode) === cleanBarcode) || null;
+}
+
 function captureEditorDraft() {
   const form = document.querySelector('[data-editor-form]');
   if (!form) {
@@ -574,19 +594,23 @@ function stopScanner() {
   scannerResultHandled = false;
   state.scanner = {
     open: false,
+    context: 'editor',
     status: 'idle',
     message: '',
     error: '',
   };
 }
 
-function openScanner() {
+function openScanner(context = 'editor') {
   captureEditorDraft();
   scannerResultHandled = false;
   state.scanner = {
     open: true,
+    context,
     status: 'starting',
-    message: 'Place le code-barres dans le cadre.',
+    message: context === 'library'
+      ? 'Scanne un Blu-ray pour vérifier ta bibliothèque.'
+      : 'Place le code-barres dans le cadre.',
     error: '',
   };
   scheduleRender();
@@ -646,13 +670,35 @@ function ensureScannerStarted() {
 }
 
 async function handleBarcodeDetected(barcode) {
-  const cleanBarcode = String(barcode || '').replace(/\D/g, '');
+  const cleanBarcode = normalizeBarcode(barcode);
   if (!cleanBarcode) {
     return;
   }
 
   navigator.vibrate?.(90);
+  const scannerContext = state.scanner.context || 'editor';
   stopScanner();
+
+  if (scannerContext === 'library') {
+    const existing = findBlurayByBarcode(cleanBarcode);
+    if (existing) {
+      showToast('success', 'Bibliothèque', `${existing.title || 'Blu-ray'} est déjà dans ta collection.`);
+      navigate(`detail:${existing.id}`);
+      return;
+    }
+
+    state.metadataSuggestion = null;
+    state.metadataMessage = 'Code-barres absent de ta bibliothèque. Tu peux ajouter ce Blu-ray.';
+    state.metadataLoading = false;
+    state.editorBluray = {
+      ...emptyBlurayForm(),
+      barcode: cleanBarcode,
+    };
+    showToast('warning', 'Bibliothèque', 'Code-barres non trouvé dans ta collection.');
+    openEditor('new');
+    return;
+  }
+
   state.editorBluray = {
     ...captureEditorDraft(),
     barcode: cleanBarcode,
@@ -662,7 +708,7 @@ async function handleBarcodeDetected(barcode) {
 }
 
 async function lookupMetadataForBarcode(barcode) {
-  const cleanBarcode = String(barcode || '').replace(/\D/g, '');
+  const cleanBarcode = normalizeBarcode(barcode);
   if (!cleanBarcode) {
     showToast('warning', 'Code-barres', 'Renseigne ou scanne un code-barres avant la recherche.');
     return;
@@ -697,6 +743,45 @@ async function lookupMetadataForBarcode(barcode) {
   }
 }
 
+async function lookupMetadataForTitle(title) {
+  const cleanTitle = String(title || '').trim();
+  if (!cleanTitle) {
+    showToast('warning', 'TMDB', 'Renseigne un titre avant de chercher sur TMDB.');
+    return;
+  }
+
+  state.metadataLoading = true;
+  state.metadataSuggestion = null;
+  state.metadataMessage = 'Recherche TMDB en cours...';
+  state.editorBluray = {
+    ...captureEditorDraft(),
+    title: cleanTitle,
+  };
+  scheduleRender();
+
+  try {
+    const suggestion = await searchTitleMetadata(cleanTitle);
+    if (!suggestion) {
+      state.metadataMessage = 'Aucune fiche TMDB trouvée pour ce titre.';
+      showToast('warning', 'TMDB', state.metadataMessage);
+      return;
+    }
+
+    state.metadataSuggestion = {
+      ...suggestion,
+      barcode: state.editorBluray.barcode || '',
+    };
+    state.metadataMessage = 'Fiche TMDB trouvée. Vérifie puis utilise les infos.';
+    showToast('success', 'TMDB', 'Une fiche film a été trouvée.');
+  } catch (error) {
+    state.metadataMessage = error.message || 'Recherche TMDB indisponible.';
+    showToast('warning', 'TMDB', state.metadataMessage);
+  } finally {
+    state.metadataLoading = false;
+    scheduleRender();
+  }
+}
+
 function applyMetadataSuggestion() {
   if (!state.metadataSuggestion) {
     return;
@@ -713,7 +798,7 @@ function applyMetadataSuggestion() {
     comment: suggestion.comment || draft.comment,
     barcode: suggestion.barcode || draft.barcode,
     coverExternalUrl: suggestion.coverExternalUrl || draft.coverExternalUrl,
-    autoFilledFromBarcode: true,
+    autoFilledFromBarcode: suggestion.autoFilledFromBarcode === true,
     metadataSource: suggestion.metadataSource || draft.metadataSource,
   };
   state.metadataSuggestion = null;
@@ -842,11 +927,16 @@ function handleDocumentClick(event) {
     state.metadataSuggestion = null;
     state.metadataMessage = '';
     state.metadataLoading = false;
+    state.editorBluray = emptyBlurayForm();
     openEditor('new');
     return;
   }
   if (action === 'open-scanner') {
-    openScanner();
+    openScanner('editor');
+    return;
+  }
+  if (action === 'open-library-scanner') {
+    openScanner('library');
     return;
   }
   if (action === 'close-scanner') {
@@ -856,6 +946,11 @@ function handleDocumentClick(event) {
   if (action === 'lookup-barcode') {
     const draft = captureEditorDraft();
     lookupMetadataForBarcode(draft.barcode);
+    return;
+  }
+  if (action === 'lookup-title') {
+    const draft = captureEditorDraft();
+    lookupMetadataForTitle(draft.title);
     return;
   }
   if (action === 'apply-metadata') {

@@ -978,6 +978,21 @@ img {
   line-height: 1.4;
 }
 
+.title-lookup-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(115, 240, 255, 0.14);
+  background: rgba(115, 240, 255, 0.045);
+}
+
+.title-lookup-panel .helper-message {
+  grid-column: 1 / -1;
+}
+
 .barcode-panel {
   display: grid;
   gap: 10px;
@@ -1519,6 +1534,16 @@ img {
     width: 100%;
     min-height: 44px;
     padding: 0.78rem 0.85rem;
+  }
+
+  .scan-library-button,
+  .toolbar .primary-button {
+    grid-column: 1 / -1;
+  }
+
+  .title-lookup-panel {
+    grid-template-columns: 1fr;
+    padding: 10px;
   }
 
   .collection-filters {
