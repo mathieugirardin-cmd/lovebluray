@@ -60,6 +60,9 @@ Document `blurays/{blurayId}`:
   barcode,
   rating,
   comment,
+  coverExternalUrl,
+  autoFilledFromBarcode,
+  metadataSource,
   is3D,
   hasCover,
   watched,
@@ -145,7 +148,53 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
 VITE_FIREBASE_MEASUREMENT_ID=
+VITE_TMDB_API_KEY=
 ```
+
+`VITE_TMDB_API_KEY` est optionnelle. Sans clé TMDB, le scan conserve le code-barres et tente seulement les informations disponibles via UPCitemdb.
+
+## Scan code-barres V2
+
+Le formulaire d'ajout et de modification propose un bouton `Scanner le code-barres`.
+
+Fonctionnement:
+
+- ouverture de la caméra du téléphone;
+- scan EAN/UPC avec `@zxing/browser` chargé côté navigateur;
+- fallback possible avec `BarcodeDetector` si ZXing est indisponible;
+- remplissage automatique du champ `barcode`;
+- recherche gratuite via UPCitemdb;
+- recherche TMDB optionnelle si `VITE_TMDB_API_KEY` est renseignée;
+- proposition des informations trouvées sans sauvegarde automatique;
+- bouton `Utiliser ces infos` pour préremplir le formulaire;
+- correction manuelle possible avant enregistrement.
+
+TMDB ne recherche pas par code-barres. L'application récupère ou déduit d'abord un titre depuis le code-barres, puis cherche ce titre dans TMDB.
+
+Les jaquettes automatiques ne sont pas stockées en base64. Si une image externe est trouvée, son URL est stockée dans `coverExternalUrl`. Les jaquettes importées manuellement continuent d'être compressées et stockées dans Firestore dans `covers/{blurayId}`.
+
+Champs automatiques possibles:
+
+```js
+{
+  coverExternalUrl,
+  autoFilledFromBarcode,
+  metadataSource
+}
+```
+
+Pour créer une clé TMDB:
+
+1. Crée un compte sur `https://www.themoviedb.org/`.
+2. Va dans `Settings > API`.
+3. Demande une clé API.
+4. Ajoute la clé dans `.env`:
+
+```env
+VITE_TMDB_API_KEY=ta-cle-tmdb
+```
+
+Cette fonctionnalité reste optionnelle et l'application fonctionne sans TMDB.
 
 ## Configuration Firebase
 
@@ -191,6 +240,11 @@ Tu peux ensuite ajouter Quentin avec `role: "member"` ou `role: "owner"`.
 - Les filtres genre et année fonctionnent.
 - La vue liste/grille peut être changée.
 - `À acheter`, `En cours d'achat` et `Non visualisé` affichent les bons films.
+- Le bouton `Scanner le code-barres` ouvre la caméra sur mobile.
+- Un code-barres EAN/UPC remplit automatiquement le champ `barcode`.
+- Si une fiche est trouvée, elle est proposée sans sauvegarde automatique.
+- Le bouton `Utiliser ces infos` préremplit le formulaire.
+- Si aucune fiche n'est trouvée, le code-barres reste rempli et la saisie manuelle reste possible.
 - Un ajout sans jaquette crée `blurays/{blurayId}`.
 - Un ajout avec jaquette crée aussi `covers/{blurayId}`.
 
@@ -218,6 +272,7 @@ Pour utiliser Lovebluray hors de la maison, déploie l'application sur GitHub Pa
    - `VITE_FIREBASE_MESSAGING_SENDER_ID`
    - `VITE_FIREBASE_APP_ID`
    - `VITE_FIREBASE_MEASUREMENT_ID`
+   - `VITE_TMDB_API_KEY` (optionnel)
 5. Va dans `Settings > Pages`.
 6. Choisis `GitHub Actions` comme source de déploiement.
 7. Pousse sur `main` ou `master`: le workflow `.github/workflows/deploy-pages.yml` publie automatiquement `dist`.

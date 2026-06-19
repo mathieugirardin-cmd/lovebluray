@@ -978,6 +978,86 @@ img {
   line-height: 1.4;
 }
 
+.barcode-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(114, 219, 255, 0.16);
+  background: rgba(80, 186, 255, 0.06);
+}
+
+.barcode-panel__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.helper-message {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.metadata-card {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(115, 240, 255, 0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(115, 240, 255, 0.16), transparent 38%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.metadata-card__poster,
+.metadata-card__poster img,
+.metadata-card__placeholder {
+  width: 100%;
+  min-height: 220px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.metadata-card__poster img {
+  height: 100%;
+  object-fit: cover;
+}
+
+.metadata-card__placeholder {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--muted);
+  background: rgba(6, 16, 29, 0.8);
+}
+
+.metadata-card__placeholder .icon {
+  width: 36px;
+  height: 36px;
+  fill: currentColor;
+}
+
+.metadata-card__body {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.metadata-card h4,
+.metadata-card p {
+  margin: 0;
+}
+
+.metadata-card p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1061,6 +1141,78 @@ img {
 .detail-actions {
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.scanner-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(2, 8, 16, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.scanner-panel {
+  width: min(560px, 100%);
+  overflow: hidden;
+}
+
+.scanner-panel__header,
+.scanner-panel__footer {
+  padding: 14px;
+}
+
+.scanner-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.scanner-panel__header h3,
+.scanner-panel__footer p,
+.scanner-panel__footer strong {
+  margin: 0;
+}
+
+.scanner-panel__footer {
+  display: grid;
+  gap: 10px;
+}
+
+.scanner-panel__footer p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.scanner-frame {
+  position: relative;
+  min-height: 360px;
+  background: #020914;
+  overflow: hidden;
+}
+
+.scanner-frame video {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  object-fit: cover;
+}
+
+.scanner-frame__target {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 50%;
+  height: 118px;
+  transform: translateY(-50%);
+  border: 2px solid rgba(115, 240, 255, 0.9);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 0 0 999px rgba(0, 0, 0, 0.28),
+    0 0 28px rgba(115, 240, 255, 0.38);
 }
 
 .toast-root {
@@ -1381,6 +1533,30 @@ img {
     border-radius: var(--radius-md);
   }
 
+  .barcode-panel {
+    padding: 10px;
+  }
+
+  .barcode-panel__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .metadata-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .metadata-card__poster,
+  .metadata-card__poster img,
+  .metadata-card__placeholder {
+    min-height: 142px;
+  }
+
+  .metadata-card__body .primary-button {
+    width: 100%;
+  }
+
   .topbar__actions,
   .auth-form__actions,
   .editor-form__actions,
@@ -1514,5 +1690,37 @@ img {
   .editor-form__actions .primary-button {
     width: 100%;
     min-height: 46px;
+  }
+
+  .scanner-backdrop {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .scanner-panel {
+    width: 100%;
+    min-height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .scanner-panel__header,
+  .scanner-panel__footer {
+    padding: 12px;
+  }
+
+  .scanner-frame,
+  .scanner-frame video {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .scanner-frame__target {
+    left: 8%;
+    right: 8%;
+    height: 104px;
   }
 }

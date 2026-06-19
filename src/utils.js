@@ -168,6 +168,9 @@ export function emptyBlurayForm() {
     barcode: '',
     rating: 0,
     comment: '',
+    coverExternalUrl: '',
+    autoFilledFromBarcode: false,
+    metadataSource: '',
     is3D: false,
     watched: false,
   };
@@ -185,6 +188,7 @@ export function blurayToSearchBlob(bluray) {
       bluray.location,
       bluray.barcode,
       bluray.comment,
+      bluray.metadataSource,
     ]
       .filter(Boolean)
       .join(' ')

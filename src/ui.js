@@ -32,6 +32,7 @@ const ICONS = {
   eye: 'M12 5.25c5.4 0 8.75 6.75 8.75 6.75S17.4 18.75 12 18.75 3.25 12 3.25 12 6.6 5.25 12 5.25Zm0 2.4a4.35 4.35 0 1 0 0 8.7 4.35 4.35 0 0 0 0-8.7Zm0 1.7a2.65 2.65 0 1 1 0 5.3 2.65 2.65 0 0 1 0-5.3Z',
   user: 'M12 12.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 6.5c0-3.3 3.1-6 7-6s7 2.7 7 6v.5H5V19Z',
   refresh: 'M6 12a6 6 0 0 1 10.7-3.7l1.3-1.3v4.5h-4.5l1.8-1.8A4 4 0 1 0 16 15h2.2A6 6 0 1 1 6 12Z',
+  scan: 'M4 5h5v2H6v3H4V5Zm11 0h5v5h-2V7h-3V5ZM4 14h2v3h3v2H4v-5Zm14 0h2v5h-5v-2h3v-3ZM7 11h10v2H7v-2Z',
   warning: 'M12 3 2.75 19h18.5L12 3Zm0 5.1 1 5.7h-2l1-5.7Zm0 8.4a1.15 1.15 0 1 1 0-2.3 1.15 1.15 0 0 1 0 2.3Z',
   google: 'M21.6 12.22c0-.73-.06-1.43-.17-2.11H12v4h5.4c-.24 1.28-.98 2.36-2.07 3.09v2.58h3.35c1.96-1.81 2.92-4.49 2.92-7.56Z',
   grid: 'M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z',
@@ -345,7 +346,47 @@ export function renderAuthScreen({ configured, missingKeys, busy }) {
   `;
 }
 
-export function renderEditorModal({ bluray, mode, busy }) {
+function renderMetadataSuggestion(suggestion, loading) {
+  if (loading) {
+    return `
+      <div class="metadata-card field--wide">
+        <div class="loader"><span></span><span></span><span></span></div>
+        <div>
+          <strong>Recherche en cours</strong>
+          <p>On tente de trouver la fiche du Blu-ray à partir du code-barres.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  if (!suggestion) {
+    return '';
+  }
+
+  const poster = suggestion.coverExternalUrl
+    ? `<img src="${escapeHtml(suggestion.coverExternalUrl)}" alt="Jaquette proposée pour ${escapeHtml(suggestion.title || 'Blu-ray')}" loading="lazy" />`
+    : `<div class="metadata-card__placeholder">${svgIcon('image')}<span>Pas d’image</span></div>`;
+
+  return `
+    <article class="metadata-card field--wide">
+      <div class="metadata-card__poster">${poster}</div>
+      <div class="metadata-card__body">
+        <p class="eyebrow">Proposition automatique</p>
+        <h4>${escapeHtml(suggestion.title || 'Titre non trouvé')}</h4>
+        <div class="tags">
+          ${suggestion.year ? chip(String(suggestion.year), 'neutral') : ''}
+          ${suggestion.genre ? chip(suggestion.genre, 'brand') : ''}
+          ${suggestion.metadataSource ? chip(suggestion.metadataSource, 'info') : ''}
+        </div>
+        ${suggestion.director ? `<p><strong>Réalisateur:</strong> ${escapeHtml(suggestion.director)}</p>` : ''}
+        ${suggestion.comment ? `<p>${escapeHtml(suggestion.comment)}</p>` : ''}
+        <button class="primary-button" type="button" data-action="apply-metadata">${svgIcon('check')} Utiliser ces infos</button>
+      </div>
+    </article>
+  `;
+}
+
+export function renderEditorModal({ bluray, mode, busy, metadataSuggestion, metadataLoading, metadataMessage }) {
   const title = mode === 'edit' ? 'Modifier le Blu-ray' : 'Ajouter un Blu-ray';
   const submitLabel = mode === 'edit' ? 'Mettre à jour' : 'Enregistrer';
   return `
@@ -381,12 +422,26 @@ export function renderEditorModal({ bluray, mode, busy }) {
               </select>
             </label>
             <label class="field"><span>Emplacement</span><input name="location" value="${escapeHtml(bluray.location || '')}" /></label>
-            <label class="field"><span>Code-barres</span><input name="barcode" value="${escapeHtml(bluray.barcode || '')}" /></label>
+            <div class="barcode-panel field--wide">
+              <label class="field">
+                <span>Code-barres</span>
+                <input name="barcode" inputmode="numeric" autocomplete="off" value="${escapeHtml(bluray.barcode || '')}" />
+              </label>
+              <div class="barcode-panel__actions">
+                <button class="ghost-button" type="button" data-action="open-scanner">${svgIcon('scan')} Scanner le code-barres</button>
+                <button class="ghost-button" type="button" data-action="lookup-barcode" ${metadataLoading ? 'disabled' : ''}>${svgIcon('search')} Rechercher les infos</button>
+              </div>
+              ${metadataMessage ? `<p class="helper-message">${escapeHtml(metadataMessage)}</p>` : ''}
+            </div>
+            ${renderMetadataSuggestion(metadataSuggestion, metadataLoading)}
             <label class="field"><span>Note (0 à 5)</span><input name="rating" type="number" min="0" max="5" step="1" value="${escapeHtml(bluray.rating ?? 0)}" /></label>
             <label class="switch-field"><input name="watched" type="checkbox" ${bluray.watched ? 'checked' : ''} /><span>Déjà visualisé</span></label>
             <label class="switch-field"><input name="is3D" type="checkbox" ${bluray.is3D ? 'checked' : ''} /><span>Film en 3D</span></label>
             <label class="field field--wide"><span>Commentaire</span><textarea name="comment" rows="4">${escapeHtml(bluray.comment || '')}</textarea></label>
             <label class="field field--wide"><span>Jaquette</span><input name="cover" type="file" accept="image/*" /><small>L'image est compressée puis stockée dans Firestore.</small></label>
+            <input type="hidden" name="coverExternalUrl" value="${escapeHtml(bluray.coverExternalUrl || '')}" />
+            <input type="hidden" name="autoFilledFromBarcode" value="${bluray.autoFilledFromBarcode ? 'true' : 'false'}" />
+            <input type="hidden" name="metadataSource" value="${escapeHtml(bluray.metadataSource || '')}" />
           </div>
 
           <div class="editor-form__actions">
@@ -452,6 +507,37 @@ export function renderDetailModal({ bluray }) {
   `;
 }
 
+export function renderScannerOverlay(scanner) {
+  if (!scanner?.open) {
+    return '';
+  }
+
+  return `
+    <div class="scanner-backdrop">
+      <section class="scanner-panel glass" role="dialog" aria-modal="true" aria-label="Scanner un code-barres">
+        <header class="scanner-panel__header">
+          <div>
+            <p class="eyebrow">Scanner un Blu-ray</p>
+            <h3>Code-barres</h3>
+          </div>
+          <button class="icon-button" type="button" data-action="close-scanner" title="Fermer le scanner">${svgIcon('close')}</button>
+        </header>
+
+        <div class="scanner-frame">
+          <video id="barcode-video" autoplay muted playsinline></video>
+          <div class="scanner-frame__target"></div>
+        </div>
+
+        <div class="scanner-panel__footer">
+          <strong>${escapeHtml(scanner.error || scanner.message || 'Place le code-barres dans le cadre.')}</strong>
+          <p>EAN et UPC sont pris en charge. Sur iPhone, autorise la caméra si Safari le demande.</p>
+          <button class="ghost-button" type="button" data-action="close-scanner">${svgIcon('close')} Fermer la caméra</button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function renderDetailItem(label, value) {
   return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value || '—')}</dd></div>`;
 }
@@ -474,16 +560,25 @@ export function renderAppOverlays(state) {
   const bluray = state.activeBluray || null;
 
   if (route.type === 'detail' && bluray) {
-    return renderDetailModal({ bluray });
+    return `
+      ${renderDetailModal({ bluray })}
+      ${renderScannerOverlay(state.scanner)}
+    `;
   }
 
   if (route.type === 'editor') {
-    return renderEditorModal({
-      bluray: state.editorBluray || {},
-      mode: route.id === 'new' ? 'create' : 'edit',
-      busy: state.busy,
-    });
+    return `
+      ${renderEditorModal({
+        bluray: state.editorBluray || {},
+        mode: route.id === 'new' ? 'create' : 'edit',
+        busy: state.busy,
+        metadataSuggestion: state.metadataSuggestion,
+        metadataLoading: state.metadataLoading,
+        metadataMessage: state.metadataMessage,
+      })}
+      ${renderScannerOverlay(state.scanner)}
+    `;
   }
 
-  return '';
+  return renderScannerOverlay(state.scanner);
 }

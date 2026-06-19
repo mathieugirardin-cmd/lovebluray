@@ -3,6 +3,8 @@ import { auth, db, firebaseStatus } from './firebase';
 import { initAuth, loginWithEmail, loginWithGoogle, logoutUser, registerWithEmail } from './auth';
 import { removeBlurayDocument, saveBlurayDocument, watchBlurays } from './blurays';
 import { deleteCoverDocument, getCoverDocument, saveCoverDocument } from './covers';
+import { lookupBarcodeMetadata } from './metadata';
+import { startBarcodeScanner } from './scanner';
 import { computeStats } from './stats';
 import {
   APP_NAME,
@@ -45,11 +47,23 @@ const state = {
   viewMode: 'grid',
   toasts: [],
   editorBluray: emptyBlurayForm(),
+  metadataSuggestion: null,
+  metadataLoading: false,
+  metadataMessage: '',
+  scanner: {
+    open: false,
+    status: 'idle',
+    message: '',
+    error: '',
+  },
   activeBluray: null,
   currentViewMessage: '',
 };
 
 let unsubscribeBlurays = () => {};
+let scannerControls = null;
+let scannerStartInProgress = false;
+let scannerResultHandled = false;
 const pendingCoverLoads = new Set();
 
 function parseRoute() {
@@ -132,6 +146,10 @@ function scheduleRender() {
 }
 
 function setRouteFromLocation() {
+  stopScanner();
+  state.metadataSuggestion = null;
+  state.metadataMessage = '';
+  state.metadataLoading = false;
   state.route = parseRoute();
   syncActiveBluray();
   scheduleRender();
@@ -153,7 +171,7 @@ function withCover(bluray) {
   const cover = state.covers[bluray.id];
   return {
     ...bluray,
-    coverImageUrl: cover?.imageUrl || '',
+    coverImageUrl: cover?.imageUrl || bluray.coverExternalUrl || '',
     coverSize: cover?.size || 0,
   };
 }
@@ -199,6 +217,9 @@ function toEditorModel(bluray) {
     barcode: bluray.barcode || '',
     rating: Number(bluray.rating || 0),
     comment: bluray.comment || '',
+    coverExternalUrl: bluray.coverExternalUrl || '',
+    autoFilledFromBarcode: bluray.autoFilledFromBarcode === true,
+    metadataSource: bluray.metadataSource || '',
     is3D: bluray.is3D === true,
     watched: bluray.watched === true,
   };
@@ -217,6 +238,9 @@ function validateEditorForm(formData) {
     barcode: String(formData.get('barcode') || '').trim(),
     rating: String(formData.get('rating') || '').trim(),
     comment: String(formData.get('comment') || '').trim(),
+    coverExternalUrl: String(formData.get('coverExternalUrl') || '').trim(),
+    autoFilledFromBarcode: formData.get('autoFilledFromBarcode') === 'true',
+    metadataSource: String(formData.get('metadataSource') || '').trim(),
     is3D: formData.get('is3D') === 'on',
     watched: formData.get('watched') === 'on',
   };
@@ -379,6 +403,9 @@ async function submitEditor(form) {
       barcode: payload.barcode,
       rating: payload.rating,
       comment: payload.comment,
+      coverExternalUrl: payload.coverExternalUrl,
+      autoFilledFromBarcode: payload.autoFilledFromBarcode,
+      metadataSource: payload.metadataSource,
       is3D: payload.is3D,
       watched: payload.watched,
       hasCover: Boolean(savedCover || existing.hasCover),
@@ -479,6 +506,9 @@ async function importCollection(file) {
           barcode: String(item.barcode || '').trim(),
           rating: clamp(Number(item.rating || 0), 0, 5),
           comment: String(item.comment || '').trim(),
+          coverExternalUrl: String(item.coverExternalUrl || '').trim(),
+          autoFilledFromBarcode: item.autoFilledFromBarcode === true,
+          metadataSource: String(item.metadataSource || '').trim(),
           is3D: item.is3D === true,
           watched: item.watched === true,
           hasCover: Boolean(item.hasCover),
@@ -504,6 +534,194 @@ function resetFilters() {
     year: 'all',
     sort: 'updatedAt-desc',
   };
+  scheduleRender();
+}
+
+function captureEditorDraft() {
+  const form = document.querySelector('[data-editor-form]');
+  if (!form) {
+    return state.editorBluray;
+  }
+
+  const formData = new FormData(form);
+  state.editorBluray = {
+    ...state.editorBluray,
+    title: String(formData.get('title') || ''),
+    saga: String(formData.get('saga') || ''),
+    genre: String(formData.get('genre') || state.editorBluray.genre || 'Action'),
+    year: String(formData.get('year') || ''),
+    director: String(formData.get('director') || ''),
+    status: String(formData.get('status') || state.editorBluray.status || 'Possédé'),
+    owner: String(formData.get('owner') || state.editorBluray.owner || 'Commun'),
+    location: String(formData.get('location') || ''),
+    barcode: String(formData.get('barcode') || ''),
+    rating: Number(formData.get('rating') || 0),
+    comment: String(formData.get('comment') || ''),
+    coverExternalUrl: String(formData.get('coverExternalUrl') || ''),
+    autoFilledFromBarcode: formData.get('autoFilledFromBarcode') === 'true',
+    metadataSource: String(formData.get('metadataSource') || ''),
+    is3D: formData.get('is3D') === 'on',
+    watched: formData.get('watched') === 'on',
+  };
+
+  return state.editorBluray;
+}
+
+function stopScanner() {
+  scannerControls?.stop?.();
+  scannerControls = null;
+  scannerStartInProgress = false;
+  scannerResultHandled = false;
+  state.scanner = {
+    open: false,
+    status: 'idle',
+    message: '',
+    error: '',
+  };
+}
+
+function openScanner() {
+  captureEditorDraft();
+  scannerResultHandled = false;
+  state.scanner = {
+    open: true,
+    status: 'starting',
+    message: 'Place le code-barres dans le cadre.',
+    error: '',
+  };
+  scheduleRender();
+}
+
+function closeScanner() {
+  stopScanner();
+  scheduleRender();
+}
+
+function ensureScannerStarted() {
+  if (!state.scanner.open || scannerControls || scannerStartInProgress) {
+    return;
+  }
+
+  const video = document.querySelector('#barcode-video');
+  if (!video) {
+    return;
+  }
+
+  scannerStartInProgress = true;
+  startBarcodeScanner({
+    video,
+    onDetected: (barcode) => {
+      if (scannerResultHandled) {
+        return;
+      }
+      scannerResultHandled = true;
+      handleBarcodeDetected(barcode);
+    },
+    onStatus: (message) => {
+      state.scanner = {
+        ...state.scanner,
+        status: 'scanning',
+        message,
+      };
+      scheduleRender();
+    },
+  })
+    .then((controls) => {
+      scannerControls = controls;
+      scannerStartInProgress = false;
+      state.scanner = {
+        ...state.scanner,
+        status: 'scanning',
+        message: 'Place le code-barres dans le cadre.',
+      };
+      scheduleRender();
+    })
+    .catch((error) => {
+      scannerStartInProgress = false;
+      state.scanner = {
+        ...state.scanner,
+        status: 'error',
+        error: error.message || 'Impossible d’ouvrir la caméra.',
+        message: '',
+      };
+      scheduleRender();
+    });
+}
+
+async function handleBarcodeDetected(barcode) {
+  const cleanBarcode = String(barcode || '').replace(/\D/g, '');
+  if (!cleanBarcode) {
+    return;
+  }
+
+  navigator.vibrate?.(90);
+  stopScanner();
+  state.editorBluray = {
+    ...captureEditorDraft(),
+    barcode: cleanBarcode,
+  };
+  showToast('success', 'Code-barres', `${cleanBarcode} scanné.`);
+  await lookupMetadataForBarcode(cleanBarcode);
+}
+
+async function lookupMetadataForBarcode(barcode) {
+  const cleanBarcode = String(barcode || '').replace(/\D/g, '');
+  if (!cleanBarcode) {
+    showToast('warning', 'Code-barres', 'Renseigne ou scanne un code-barres avant la recherche.');
+    return;
+  }
+
+  state.metadataLoading = true;
+  state.metadataSuggestion = null;
+  state.metadataMessage = 'Recherche automatique des informations...';
+  state.editorBluray = {
+    ...captureEditorDraft(),
+    barcode: cleanBarcode,
+  };
+  scheduleRender();
+
+  try {
+    const suggestion = await lookupBarcodeMetadata(cleanBarcode);
+    if (!suggestion) {
+      state.metadataMessage = 'Code-barres scanné, mais aucune fiche automatique trouvée.';
+      showToast('warning', 'Recherche', state.metadataMessage);
+      return;
+    }
+
+    state.metadataSuggestion = suggestion;
+    state.metadataMessage = 'Fiche trouvée. Vérifie puis utilise les infos si elles sont correctes.';
+    showToast('success', 'Recherche', 'Une fiche automatique a été trouvée.');
+  } catch (error) {
+    state.metadataMessage = error.message || 'Recherche automatique indisponible.';
+    showToast('warning', 'Recherche', state.metadataMessage);
+  } finally {
+    state.metadataLoading = false;
+    scheduleRender();
+  }
+}
+
+function applyMetadataSuggestion() {
+  if (!state.metadataSuggestion) {
+    return;
+  }
+
+  const draft = captureEditorDraft();
+  const suggestion = state.metadataSuggestion;
+  state.editorBluray = {
+    ...draft,
+    title: suggestion.title || draft.title,
+    genre: suggestion.genre || draft.genre,
+    year: suggestion.year || draft.year,
+    director: suggestion.director || draft.director,
+    comment: suggestion.comment || draft.comment,
+    barcode: suggestion.barcode || draft.barcode,
+    coverExternalUrl: suggestion.coverExternalUrl || draft.coverExternalUrl,
+    autoFilledFromBarcode: true,
+    metadataSource: suggestion.metadataSource || draft.metadataSource,
+  };
+  state.metadataSuggestion = null;
+  state.metadataMessage = 'Infos appliquées. Tu peux encore modifier avant d’enregistrer.';
+  showToast('success', 'Préremplissage', 'Les informations ont été appliquées au formulaire.');
   scheduleRender();
 }
 
@@ -584,6 +802,10 @@ function render() {
   if (state.activeBluray?.hasCover) {
     queueCoverLoads([state.activeBluray]);
   }
+
+  if (state.scanner.open) {
+    window.setTimeout(ensureScannerStarted, 0);
+  }
 }
 
 function handleDocumentClick(event) {
@@ -591,6 +813,7 @@ function handleDocumentClick(event) {
   if (!actionButton) {
     const overlay = event.target.closest('[data-close-overlay="true"]');
     if (overlay && event.target === overlay) {
+      stopScanner();
       closeModal();
     }
     return;
@@ -619,10 +842,31 @@ function handleDocumentClick(event) {
     return;
   }
   if (action === 'open-editor') {
+    state.metadataSuggestion = null;
+    state.metadataMessage = '';
+    state.metadataLoading = false;
     openEditor('new');
     return;
   }
+  if (action === 'open-scanner') {
+    openScanner();
+    return;
+  }
+  if (action === 'close-scanner') {
+    closeScanner();
+    return;
+  }
+  if (action === 'lookup-barcode') {
+    const draft = captureEditorDraft();
+    lookupMetadataForBarcode(draft.barcode);
+    return;
+  }
+  if (action === 'apply-metadata') {
+    applyMetadataSuggestion();
+    return;
+  }
   if (action === 'close-modal') {
+    stopScanner();
     closeModal();
     return;
   }
@@ -658,6 +902,9 @@ function handleDocumentClick(event) {
   if (action === 'edit') {
     const id = actionButton.dataset.id;
     if (id) {
+      state.metadataSuggestion = null;
+      state.metadataMessage = '';
+      state.metadataLoading = false;
       navigate(`editor:${id}`);
     }
     return;
@@ -725,7 +972,12 @@ function handleDocumentInput(event) {
 }
 
 function handleKeydown(event) {
+  if (event.key === 'Escape' && state.scanner.open) {
+    closeScanner();
+    return;
+  }
   if (event.key === 'Escape' && state.user && ['detail', 'editor'].includes(state.route.type)) {
+    stopScanner();
     navigate('collection');
   }
 }
