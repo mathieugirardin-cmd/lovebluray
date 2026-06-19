@@ -18,7 +18,16 @@ async function startZxingScanner(video, onDetected) {
   const reader = new BrowserMultiFormatReader();
   let stopped = false;
 
-  const controls = await reader.decodeFromVideoDevice(undefined, video, (result) => {
+  const constraints = {
+    video: {
+      facingMode: { ideal: 'environment' },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    },
+    audio: false,
+  };
+
+  const controls = await reader.decodeFromConstraints(constraints, video, (result) => {
     if (stopped || !result) {
       return;
     }

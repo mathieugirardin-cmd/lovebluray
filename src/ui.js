@@ -529,7 +529,7 @@ export function renderScannerOverlay(scanner) {
         </div>
 
         <div class="scanner-panel__footer">
-          <strong>${escapeHtml(scanner.error || scanner.message || 'Place le code-barres dans le cadre.')}</strong>
+          <strong data-scanner-message>${escapeHtml(scanner.error || scanner.message || 'Place le code-barres dans le cadre.')}</strong>
           <p>EAN et UPC sont pris en charge. Sur iPhone, autorise la caméra si Safari le demande.</p>
           <button class="ghost-button" type="button" data-action="close-scanner">${svgIcon('close')} Fermer la caméra</button>
         </div>

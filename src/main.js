@@ -607,6 +607,19 @@ function ensureScannerStarted() {
     return;
   }
 
+  const updateScannerMessage = (message, isError = false) => {
+    state.scanner = {
+      ...state.scanner,
+      status: isError ? 'error' : 'scanning',
+      message: isError ? '' : message,
+      error: isError ? message : '',
+    };
+    const messageElement = document.querySelector('[data-scanner-message]');
+    if (messageElement) {
+      messageElement.textContent = message;
+    }
+  };
+
   scannerStartInProgress = true;
   startBarcodeScanner({
     video,
@@ -618,33 +631,17 @@ function ensureScannerStarted() {
       handleBarcodeDetected(barcode);
     },
     onStatus: (message) => {
-      state.scanner = {
-        ...state.scanner,
-        status: 'scanning',
-        message,
-      };
-      scheduleRender();
+      updateScannerMessage(message);
     },
   })
     .then((controls) => {
       scannerControls = controls;
       scannerStartInProgress = false;
-      state.scanner = {
-        ...state.scanner,
-        status: 'scanning',
-        message: 'Place le code-barres dans le cadre.',
-      };
-      scheduleRender();
+      updateScannerMessage('Place le code-barres dans le cadre.');
     })
     .catch((error) => {
       scannerStartInProgress = false;
-      state.scanner = {
-        ...state.scanner,
-        status: 'error',
-        error: error.message || 'Impossible d’ouvrir la caméra.',
-        message: '',
-      };
-      scheduleRender();
+      updateScannerMessage(error.message || 'Impossible d’ouvrir la caméra.', true);
     });
 }
 
